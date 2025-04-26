@@ -25,15 +25,20 @@ class_names = [
 @st.cache_resource
 def load_model():
     file_id = "1Euawh26Mb8RCH2AtSQvoA3rQwUalO7MB"
-    download_url = f"https://drive.google.com/uc?id={file_id}"
+    download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
 
+    # Make the request to download the model file
     response = requests.get(download_url)
     if response.status_code != 200:
         raise Exception("Failed to download the model. Check the URL or file permissions.")
-
-    model = torch.load(BytesIO(response.content), map_location=torch.device('cpu'))
-    model.eval()
-    return model
+    
+    # Load the model using torch
+    try:
+        model = torch.load(BytesIO(response.content), map_location=torch.device('cpu'))
+        model.eval()
+        return model
+    except Exception as e:
+        raise Exception(f"Error loading model: {e}")
 
 model = load_model()
 
