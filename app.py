@@ -1,16 +1,19 @@
-# app.py
-
-import streamlit as st
+import os
 import torch
+import gdown
+import streamlit as st
 import torchvision.transforms as transforms
 from PIL import Image
 import time
-import requests
 from io import BytesIO
-import matplotlib.pyplot as plt
 
-# Set page config (First Streamlit command)
-st.set_page_config(page_title="Cassava Disease Classifier", page_icon="🌿")
+# Model Path
+model_path = "model_trained.pth"
+
+# Check if model exists locally, if not, download it
+if not os.path.exists(model_path):
+    url = "https://drive.google.com/uc?id=1Euawh26Mb8RCH2AtSQvoA3rQwUalO7MB"
+    gdown.download(url, model_path, quiet=False)
 
 # Classes
 class_names = [
@@ -21,37 +24,26 @@ class_names = [
     'cassava-mosaic-disease-cmd'
 ]
 
-# Load model from Google Drive
+# Function to load the model
 @st.cache_resource
 def load_model():
-    file_id = "1Euawh26Mb8RCH2AtSQvoA3rQwUalO7MB"
-    download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    model = torch.load(model_path, map_location=torch.device('cpu'))
+    model.eval()
+    return model
 
-    # Make the request to download the model file
-    response = requests.get(download_url)
-    if response.status_code != 200:
-        raise Exception("Failed to download the model. Check the URL or file permissions.")
-    
-    # Load the model using torch
-    try:
-        model = torch.load(BytesIO(response.content), map_location=torch.device('cpu'))
-        model.eval()
-        return model
-    except Exception as e:
-        raise Exception(f"Error loading model: {e}")
-
+# Load the model
 model = load_model()
 
 # Preprocessing function
 def preprocess_image(image):
     transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((224, 224)),  # Resize the image to 224x224 for the model
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406],
+        transforms.Normalize([0.485, 0.456, 0.406],  # Pretrained model normalization
                              [0.229, 0.224, 0.225])
     ])
     image = transform(image)
-    image = image.unsqueeze(0)
+    image = image.unsqueeze(0)  # Add a batch dimension
     return image
 
 # Streamlit App
@@ -67,7 +59,7 @@ if uploaded_file is not None:
     with st.spinner('Analyzing image... 🔍'):
         input_tensor = preprocess_image(image)
         
-        time.sleep(1)  # Little delay for spinner
+        time.sleep(1)  # Spinner ke liye halka delay
         with torch.no_grad():
             outputs = model(input_tensor)
             probs = torch.nn.functional.softmax(outputs[0], dim=0)
@@ -77,20 +69,15 @@ if uploaded_file is not None:
     st.success(f"🎯 **Prediction: {predicted_class}**")
     st.info(f"🧠 **Confidence: {confidence.item()*100:.2f}%**")
 
-    # Plot all class probabilities
-    fig, ax = plt.subplots()
-    ax.barh(class_names, probs.numpy())
-    ax.set_xlabel('Probability')
-    ax.set_title('Class Probabilities')
-    st.pyplot(fig)
-
     # Progress Bar
     progress_text = "Loading prediction confidence..."
     my_bar = st.progress(0, text=progress_text)
 
     for percent_complete in range(100):
-        time.sleep(0.005)
+        time.sleep(0.01)
         my_bar.progress(percent_complete + 1, text=progress_text)
 
+    st.balloons()  # 🎈
+
 else:
-    st.warning('⚠️ Please upload an image to classify.')
+    st.warning('Please upload an image to classify.')
