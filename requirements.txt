@@ -1,6 +1,5 @@
-torch
-torchvision
-streamlit
-Pillow
-requests
-matplotlib
+torch==2.1.0
+requests==2.28.1
+matplotlib==3.7.1
+streamlit==1.18.1
+Pillow==9.4.0
